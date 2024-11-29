@@ -12,11 +12,11 @@
     <div class="centered">
         <h1 class='header'> NLTK Sentiments </h1>
         <p class='desc'>
-            Type a sentence, click on the submit button and wait for your prediction.
+            This page analyzes the sentiment of the document text.
         </p>
-        <form method="POST" onSubmit='return validate();' action="sentiment" class='form'>
-            <input name="text" class="search-text" autofocus="autofocus">
-            <input type="submit" onclick='this.form.submit();'>
+        <form method="POST" action="{{ document.id }}" class='form'>
+            <input name="text" class="search-text" value="{{ document.description }}" readonly>
+            <input type="submit" value="Analyze Sentiment">
         </form>
         <br>
         <br>

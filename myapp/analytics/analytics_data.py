@@ -35,4 +35,5 @@ class ClickedDoc:
         """
         Print the object content as a JSON string
         """
-        return json.dumps(self)
+        json_data = self.to_json()
+        return json.dumps(json_data)

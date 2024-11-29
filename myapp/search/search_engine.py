@@ -1,7 +1,7 @@
 import random
 
 from myapp.search.objects import ResultItem, Document
-
+from myapp.search.algorithms import search_in_corpus
 
 def build_demo_results(corpus: dict, search_id):
     """
@@ -12,7 +12,7 @@ def build_demo_results(corpus: dict, search_id):
     size = len(corpus)
     ll = list(corpus.values())
     for index in range(random.randint(0, 40)):
-        item: Document = ll[random.randint(0, size)]
+        item: Document = ll[random.randint(0, size - 1)]
         res.append(ResultItem(item.id, item.title, item.description, item.doc_date,
                               "doc_details?id={}&search_id={}&param2=2".format(item.id, search_id), random.random()))
 
@@ -29,14 +29,21 @@ def build_demo_results(corpus: dict, search_id):
 class SearchEngine:
     """educational search engine"""
 
-    def search(self, search_query, search_id, corpus):
+    def search(self, search_query, search_id, corpus, token_tweets, inverted_index, tf, idf):
         print("Search query:", search_query)
 
         results = []
         ##### your code here #####
-        results = build_demo_results(corpus, search_id)  # replace with call to search algorithm
+        #results = build_demo_results(corpus, search_id)  # replace with call to search algorithm
 
-        # results = search_in_corpus(search_query)
+        #results = search_in_corpus(search_query)
         ##### your code here #####
+        res = search_in_corpus(search_query, token_tweets, inverted_index, tf, idf)
+        res = [(corpus[doc_id], score) for doc_id, score in res]
+        for item, scores in res:
+            results.append(ResultItem(item.id, item.title, item.description, item.doc_date,
+                              "doc_details?id={}&search_id={}&param2=2".format(item.id, search_id), item.url, scores))
+
+        results.sort(key=lambda doc: doc.ranking, reverse=True)
 
         return results

@@ -3,13 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <title>Document Detail - IRWA Search Engine</title>
+    <style>
+        /* Flexbox layout for the container */
+        .container {
+            margin-top: 25px;
+            margin-left: 25px;
+            display: flex;
+            justify-content: flex-start;
+            gap: 20px; /* Adjust the gap between the elements */
+        }
+
+        /* Styling for the links */
+        .links {
+            display: flex;
+            flex-direction: column;
+            gap: 10px; /* Space between the buttons */
+        }
+
+        .links a {
+            display: block;
+            padding: 10px;
+            background-color: red;
+            color: white;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 8px;
+            width: 150px;
+            text-transform: uppercase;
+        }
+
+        .tweet-container {
+            border: 1px solid darkred;
+            border-radius: 25px;
+            padding: 20px;
+            width: 50%;  /* Adjust the width */
+            display: block;
+            margin-left: 50px;
+            vertical-align: top;
+        }
+    </style>
 </head>
 <body>
-<div><a href="#" onclick="history.go(-1)">Go Back</a></div>
-<div><a href="#" onclick="history.go(-2)">Go Back 2 pages</a></div>
-<div><a href="#" onclick="history.go(-3)">Go Back 3 pages</a></div>
-<div><a href="#" onclick="history.go(-4)">Go Back 4 pages</a></div>
-<div><a href="/stats" >Stats</a></div>
-<div><a href="/dashboard" >Dashboard</a></div>
+    <div class="container">
+        <div class="links">
+            <a href="#" onclick="history.go(-1)">Go Back</a>
+            <a href="#" onclick="history.go(-2)">Go Back 2 pages</a>
+            <a href="/stats">Stats</a>
+            <a href="/dashboard">Dashboard</a>
+            <a href="{{ url_for('sentiment_analysis', doc_id=doc_id) }}">Analyze Sentiment</a>
+            <a href="{{ document.url }}">Tweet Link</a>
+        </div>
+        <div class="tweet-container">
+            <!-- Display User Information -->
+            <div class="user-info">
+                <!-- Display User Profile Picture -->
+                <img src="{{ document.user.profile_picture }}" alt="Profile Picture" class="profile-picture" />
+                <h3>{{ document.user.display_name }}</h3>  <!-- Display Name -->
+                <small>@{{ document.user.username }}</small>  <!-- Username -->
+            </div>
+        
+            <!-- Tweet Details -->
+            <div class="tweet-details">
+                <small>{{ document.doc_date }}</small>  <!-- Tweet Date -->
+                <p>{{ document.description }}</p>  <!-- Tweet Content -->
+                
+                <!-- Engagement Info (Likes, Retweets, Replies) -->
+                <div class="engagement-info">
+                    <strong>Likes:</strong> {{ document.likes }}<br>
+                    <strong>Retweets:</strong> {{ document.retweets }}<br>
+                    <strong>Replies:</strong> {{ document.replycount }}
+                </div>
+            </div>
+        </div>
+        
+    </div>
 </body>
 </html>

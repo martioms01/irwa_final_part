@@ -11,6 +11,8 @@ from myapp.analytics.analytics_data import AnalyticsData, ClickedDoc
 from myapp.search.load_corpus import load_corpus
 from myapp.search.objects import Document, StatsDocument
 from myapp.search.search_engine import SearchEngine
+import myapp.ranking_preparation.preprocessing as pp
+import myapp.ranking_preparation.indexing as ix
 
 
 # *** for using method to_json in objects ***
@@ -43,12 +45,16 @@ full_path = os.path.realpath(__file__)
 path, filename = os.path.split(full_path)
 # print(path + ' --> ' + filename + "\n")
 # load documents corpus into memory.
-file_path = path + "/tweets-data-who.json"
+file_path = path + "/data/farmers-protest-tweets.json"
+
 
 # file_path = "../../tweets-data-who.json"
 corpus = load_corpus(file_path)
+token_tweets = pp.create_tokenized_dictionary(corpus)
+inverted_index, tf, idf = ix.create_inverted_index_tf_idf(token_tweets)
+#print("Loaded corpus keys:", corpus.keys())  # Check the keys
+print("Type of first element in corpus:", type(list(corpus.values())[0]))
 print("loaded corpus. first elem:", list(corpus.values())[0])
-
 
 # Home URL "/"
 @app.route('/')
@@ -80,7 +86,7 @@ def search_form_post():
 
     search_id = analytics_data.save_query_terms(search_query)
 
-    results = search_engine.search(search_query, search_id, corpus)
+    results = search_engine.search(search_query, search_id,corpus, token_tweets, inverted_index, tf, idf)
 
     found_count = len(results)
     session['last_found_count'] = found_count
@@ -107,7 +113,9 @@ def doc_details():
     p1 = int(request.args["search_id"])  # transform to Integer
     p2 = int(request.args["param2"])  # transform to Integer
     print("click in id={}".format(clicked_doc_id))
+    print(f"Search ID: {p1}, Param2: {p2}")
 
+    document = corpus[int(clicked_doc_id)]
     # store data in statistics table 1
     if clicked_doc_id in analytics_data.fact_clicks.keys():
         analytics_data.fact_clicks[clicked_doc_id] += 1
@@ -116,7 +124,7 @@ def doc_details():
 
     print("fact_clicks count for id={} is {}".format(clicked_doc_id, analytics_data.fact_clicks[clicked_doc_id]))
 
-    return render_template('doc_details.html')
+    return render_template('doc_details.html', document=document, doc_id=clicked_doc_id)
 
 
 @app.route('/stats', methods=['GET'])
@@ -143,33 +151,44 @@ def stats():
 
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
+    print("Keys in fact_clicks:", analytics_data.fact_clicks.keys())  # Debugging output
+
     visited_docs = []
     print(analytics_data.fact_clicks.keys())
     for doc_id in analytics_data.fact_clicks.keys():
         d: Document = corpus[int(doc_id)]
-        doc = ClickedDoc(doc_id, d.description, analytics_data.fact_clicks[doc_id])
+        count = analytics_data.fact_clicks[doc_id]
+        doc = ClickedDoc(d.id, d.description, count)
+        #print(f"Appending doc_id: {d.id}, description: {d.description}, counter: {analytics_data.fact_clicks[doc_id]}")  # Debugging output
+
         visited_docs.append(doc)
 
     # simulate sort by ranking
-    visited_docs.sort(key=lambda doc: doc.counter, reverse=True)
+    visited_docs.sort(key=lambda doc: doc.count, reverse=True)
 
-    for doc in visited_docs: print(doc)
+    visited_docs = [doc.__str__() for doc in visited_docs]
+
     return render_template('dashboard.html', visited_docs=visited_docs)
 
 
-@app.route('/sentiment')
-def sentiment_form():
-    return render_template('sentiment.html')
+@app.route('/sentiment/<doc_id>', methods=['GET', 'POST'])
+def sentiment_analysis(doc_id):
+    document = corpus[(int(doc_id))]
+    if not document:
+        return "Document not found", 404
+    
+    if request.method == 'POST':
+        # Perform sentiment analysis
+        nltk.download('vader_lexicon')
+        from nltk.sentiment.vader import SentimentIntensityAnalyzer
+        sid = SentimentIntensityAnalyzer()
+        text = document.description
+        score = sid.polarity_scores(str(text))['compound']
+        return render_template('sentiment.html', score=score, document=document)
+    
+    # For `GET`, render the page with only the document details
+    return render_template('sentiment.html', document=document)
 
-
-@app.route('/sentiment', methods=['POST'])
-def sentiment_form_post():
-    text = request.form['text']
-    nltk.download('vader_lexicon')
-    from nltk.sentiment.vader import SentimentIntensityAnalyzer
-    sid = SentimentIntensityAnalyzer()
-    score = ((sid.polarity_scores(str(text)))['compound'])
-    return render_template('sentiment.html', score=score)
 
 
 if __name__ == "__main__":
