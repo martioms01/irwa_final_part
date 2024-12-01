@@ -10,7 +10,7 @@ Open a terminal console and execute:
 ```
 cd <your preferred projects root directory>
 
-git clone https://github.com/irwa-labs/search-engine-web-app.git
+git clone https://github.com/martioms01/irwa_final_part.git
 
 ```
 
