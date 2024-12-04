@@ -8,11 +8,13 @@ from myapp.analytics.analytics_data import AnalyticsData, ClickedDoc
 from myapp.search.load_corpus import load_corpus
 from myapp.search.objects import Document, StatsDocument
 from myapp.search.search_engine import SearchEngine
+from myapp.models.queries import get_all_clicks, get_all_requests, get_all_sessions
 import myapp.ranking_preparation.preprocessing as pp
 import myapp.ranking_preparation.indexing as ix
 from myapp.init_db import db
 from datetime import datetime
 import random
+
 
 def _default(self, obj): # for using method to_json in objects
     return getattr(obj.__class__, "to_json", _default.default)(obj)
@@ -23,7 +25,7 @@ app = Flask(__name__)                                           # instantiate th
 app.secret_key = 'afgsreg86sr897b6st8b76va8er76fcs6g8d7'        # random 'secret_key' is used for persisting data in secure cookie
 app.session_cookie_name = 'IRWA_SEARCH_ENGINE'                  # open browser dev tool to see the cookies
 
-app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://postgres:password@localhost:5432/IRWA"
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize the app with SQLAlchemy
@@ -155,22 +157,36 @@ def dashboard():
     # Log the previous document click
     save_doc_click(session)
 
-    print("Keys in fact_clicks:", analytics_data.fact_clicks.keys())  # Debugging output
 
-    visited_docs = []
-    print(analytics_data.fact_clicks.keys())
-    for doc_id in analytics_data.fact_clicks.keys():
-        d: Document = corpus[int(doc_id)]
-        count = analytics_data.fact_clicks[doc_id]
-        doc = ClickedDoc(d.id, d.description, count)
-        #print(f"Appending doc_id: {d.id}, description: {d.description}, counter: {analytics_data.fact_clicks[doc_id]}")  # Debugging output
 
-        visited_docs.append(doc)
+    # Get all clicks (most visited documents)
+    df_clicks = get_all_clicks()
 
-    # simulate sort by ranking
-    visited_docs.sort(key=lambda doc: doc.count, reverse=True)
+    # Group by doc_id and count occurrences (for visits)
+    visited_docs = df_clicks.groupby('document_id').size().reset_index(name='counter')
+    visited_docs = visited_docs.sort_values(by='counter', ascending=False)[:10]  # Top 10 visited documents
 
-    visited_docs = [doc.__str__() for doc in visited_docs]
+    # You can also fetch data for preferred browsers, queries, and terms here
+
+    # Example for preferred browsers
+    df_sessions = get_all_sessions()  # Assuming function to get all requests
+    browser_counts = df_sessions['browser'].value_counts().reset_index()
+    browser_counts.columns = ['browser', 'count']
+
+    # Example for preferred queries
+    preferred_queries = df_clicks['query'].value_counts().reset_index()
+    preferred_queries.columns = ['query', 'count']
+
+    # Example for preferred terms (assuming you have a list of terms)
+    terms = ['indian', 'farmers', 'hola']  # List of terms you'd like to track
+    term_counts = df_clicks['query'].apply(lambda x: any(term in x for term in terms)).sum()
+
+    # Pass data to the template
+    return render_template('dashboard.html', 
+                           visited_docs=visited_docs.to_dict(orient='records'),
+                           browser_counts=browser_counts.to_dict(orient='records'),
+                           preferred_queries=preferred_queries.to_dict(orient='records'),
+                           term_counts=term_counts)
 
     return render_template('dashboard.html', visited_docs=visited_docs)
 

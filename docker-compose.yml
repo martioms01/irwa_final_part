@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  flask_app:
+    build:
+      context: .  # Use the current directory for Dockerfile
+    container_name: flask_app
+    ports:
+      - "5000:5000"  # Map Flask app to localhost:5000
+    environment:
+      FLASK_APP: my_app/app.py
+      FLASK_ENV: development
+      DATABASE_URL: postgresql://postgres:example@db:5432/mydatabase
+    depends_on:
+      - db
+    networks:
+      - app_network
+
+  db:
+    image: postgres:15  # Use the PostgreSQL Docker image
+    container_name: db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: example
+      POSTGRES_DB: mydatabase
+    ports:
+      - "5433:5432"  # Expose PostgreSQL on localhost:5433
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    networks:
+      - app_network
+
+networks:
+  app_network:
+    driver: bridge
+
+volumes:
+  pg_data:
+    driver: local

@@ -1,48 +1,26 @@
 {% extends "base.html" %}
-{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
 
 {% block header %}
-    <!-- Next tag loads Charts.js https://www.chartjs.org/docs/latest/ -->
+    <!-- Include Chart.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.6.2/chart.min.js"
             integrity="sha512-tMabqarPtykgDtdtSqCL3uLVM0gS1ZkUAVhRFu1vSEFgvB73niFQWJuvviDyBGBH22Lcau4rHB5p2K2T0Xvr6Q=="
             crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 {% endblock %}
 
 {% block content %}
-
-    <!--
-    Examples of what to show in Dashboard:
-
-    - Ranking of visited documents (from results page)
-    - Visitor's preferred browsers
-    - Visitor's city (from IP)
-    - preferred queries ranking
-    - preferred terms
-    - etc.
-
-    -->
-
-    <script>
-        // 'visited_docs' is the data coming from Python code.
-        // load the python list in the JS variable 'visits_list':
-        const visits_list = {{ visited_docs | tojson | safe }};
-        console.log("visited docs: ")
-        console.log(visits_list)
-    </script>
-
-    <h5>Ranking of Visited Documents</h5>
+    <h5>Most Visited Documents</h5>
     <canvas id="dailyVisits" width="400" height="400"></canvas>
 
-
     <script>
-        // use JS map function top get just the tweet ids as labels
-        const visitsLabels = visits_list.map(a => "id: " + a.doc_id);
-        const visitsData = visits_list.map(a => a.counter);
+        const visitsList = {{ visited_docs | tojson | safe }};
+        const visitsLabels = visitsList.map(a => a.document_id);
+        const visitsData = visitsList.map(a => a.counter);
+
         const chartData1 = {
             labels: visitsLabels,
             datasets: [{
                 label: 'Visits count',
-                // data: [65, 59, 80, 81, 56, 55, 40],
                 data: visitsData,
                 fill: false,
                 borderColor: 'rgb(75, 192, 192)',
@@ -51,8 +29,6 @@
         };
 
         const ctx = document.getElementById('dailyVisits').getContext('2d');
-
-        // This will render the chart
         const myChart = new Chart(ctx, {
             type: 'line',
             data: chartData1,
@@ -64,102 +40,69 @@
                 }
             }
         });
-
     </script>
 
-    <hr>
-    <h5>Print Python data for verification with graph above...</h5>
-    {% for doc in visited_docs %}
-        <div class="pb-3">
-            <div class="">
-                <span class="text-dark"> ({{ doc.counter }} visits) </span> — id: {{ doc.doc_id }}
-                — {{ doc.description }}
-            </div>
-        </div>
-        <hr>
-    {% endfor %}
-
-
+    <h5>Preferred Browsers</h5>
+    <canvas id="browserVisits" width="400" height="400"></canvas>
 
     <script>
-        // another example
-        const data2 = {
-            labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
+        const browserData = {{ browser_counts | tojson | safe }};
+        const browserLabels = browserData.map(a => a.browser);
+        const browserCounts = browserData.map(a => a.count);
+
+        const chartData2 = {
+            labels: browserLabels,
             datasets: [{
-                label: '# of Votes',
-                data: [12, 19, 3, 5, 2, 3],
-                backgroundColor: [
-                    'rgba(255, 99, 132, 0.2)',
-                    'rgba(54, 162, 235, 0.2)',
-                    'rgba(255, 206, 86, 0.2)',
-                    'rgba(75, 192, 192, 0.2)',
-                    'rgba(153, 102, 255, 0.2)',
-                    'rgba(255, 159, 64, 0.2)'
-                ],
-                borderColor: [
-                    'rgba(255, 99, 132, 1)',
-                    'rgba(54, 162, 235, 1)',
-                    'rgba(255, 206, 86, 1)',
-                    'rgba(75, 192, 192, 1)',
-                    'rgba(153, 102, 255, 1)',
-                    'rgba(255, 159, 64, 1)'
-                ],
+                label: 'Browser Usage',
+                data: browserCounts,
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                borderColor: 'rgba(54, 162, 235, 1)',
                 borderWidth: 1
             }]
         };
 
-        // This will render the chart
-        new Chart(document.getElementById("dailyVisits2"), {
+        const ctx2 = document.getElementById('browserVisits').getContext('2d');
+        new Chart(ctx2, {
             type: 'bar',
-            data: {
-                labels: myLabels,
-                datasets: [{
-                    data: [1, 2, 3],
-                    label: "Alberta",
-                    borderColor: "#3e95cd",
-                    fill: false
-                }, {
-                    data: [1, 2, 3],
-                    label: "BC",
-                    borderColor: "#8e5ea2",
-                    fill: false
-                }, {
-                    data: [1, 2, 3],
-                    label: "Manitoba",
-                    borderColor: "#3cba9f",
-                    fill: false
-                }, {
-                    data: [1, 2, 3],
-                    label: "New Brunswick",
-                    borderColor: "#e8c3b9",
-                    fill: false
-                }, {
-                    data: [1, 2, 3],
-                    label: "NL",
-                    borderColor: "#c45850",
-                    fill: false
-                }
-                ]
-            },
+            data: chartData2,
             options: {
-                title: {
-                    display: true,
-                    text: 'Some title'
-                },
-                hover: {
-                    mode: 'index',
-                    intersect: true
-                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
             }
         });
-
-
     </script>
 
+    <h5>Preferred Queries</h5>
+    <canvas id="queryVisits" width="400" height="400"></canvas>
 
-    <canvas id="dailyVisits2" width="400" height="400"></canvas>
+    <script>
+        const queryData = {{ preferred_queries | tojson | safe }};
+        const queryLabels = queryData.map(a => a.query);
+        const queryCounts = queryData.map(a => a.count);
 
+        const chartData3 = {
+            labels: queryLabels,
+            datasets: [{
+                label: 'Query Popularity',
+                data: queryCounts,
+                backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                borderColor: 'rgba(255, 159, 64, 1)',
+                borderWidth: 1
+            }]
+        };
 
+        const ctx3 = document.getElementById('queryVisits').getContext('2d');
+        new Chart(ctx3, {
+            type: 'pie',
+            data: chartData3
+        });
+    </script>
+
+    <h5>Preferred Terms</h5>
+    <div>{{ term_counts }} total occurrences of preferred terms</div>
 
 {% endblock %}
 
