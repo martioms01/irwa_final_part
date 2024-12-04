@@ -1,102 +1,37 @@
 # Search Engine with Web Analytics - skeleton project
 # IRWA Final Project
 
-This projects contains the startup Flask files for developing a web application.
-
-## To download this repo locally
-
-Open a terminal console and execute:
-
-```
-cd <your preferred projects root directory>
-
-git clone https://github.com/martioms01/irwa_final_part.git
-
-```
-
-
+This project contains a Flask web app along with the necessary files to run it, as well as the corresponding PostgreSQL database.
 
 ## Starting the Web App
+This web app is containerized using Docker and Docker Compose to simplify execution and ensure compatibility across multiple operating systems.
 
+> Windows
+
+1. Install Docker desktop
+2. Run the following command in the root of your project (after restarting the terminal)
 ```bash
-python -V
-# Make sure we use Python 3
-
-cd search-engine-web-app
-python web_app.py
-```
-The above will start a web server with the application:
-```
- * Serving Flask app 'web-app' (lazy loading)
- * Environment: production
-   WARNING: This is a development server. Do not use it in a production deployment.
-   Use a production WSGI server instead.
- * Debug mode: off
- * Running on http://127.0.0.1:8088/ (Press CTRL+C to quit)
+docker-compose up --build
 ```
 
-Open Web app in your Browser:  
-[http://127.0.0.1:8088/](http://127.0.0.1:8088/) or [http://localhost:8088/](http://localhost:8088/)
-
-
-## Virtualenv for the project (first time use)
-### Install virtualenv
-Having different version of libraries for different projects.  
-Solves the elevated privilege issue as virtualenv allows you to install with user permission.
-
-In the project root directory execute:
+> Linux
+1. Install Docker Engine and Docker Compose
+2. Run the following command in the root of your project (after restarting the terminal)
 ```bash
-pip3 install virtualenv
-virtualenv --version
+docker-compose up --build
 ```
-virtualenv 20.10.0
 
-### Prepare virtualenv for the project
-In the root of the project folder run:
+The above command will start two connected containers: a web server running the application and a PostgreSQL database.
+
+## Navigation
+Once both containers are up and running, you can use Docker Desktop to monitor their status and ensure everything is functioning as expected.
+![Docker Desktop Status](media/containers.png)
+
+After navigating through the website for some time, you can check the database tables by accessing the 'exec' section of the 'db' container. To do so, log in to the PostgreSQL CLI using the following command:
 ```bash
-virtualenv .
+psql -U postgres -d mydatabase
 ```
+Once inside the postgre cli you can check the state of the tables.
 
-If you list the contents of the project root directory, you will see that it has created several sub-directories, including a bin folder (Scripts on Windows) that contains copies of both Python and pip. Also, a lib folder will be created by this action.
-
-The next step is to activate your new virtualenv for the project:
-
-```bash
-source bin/activate
-```
-
-or for Windows...
-```cmd
-myvenv\Scripts\activate.bat
-```
-
-This will load the python virtualenv for the project.
-
-### Installing Flask and other packages in your virtualenv
-```bash
-pip install Flask pandas nltk faker
-```
-
-Enjoy!
-
-
-
-
-## Git Help
-After creating the project and code in local computer...
-
-1. Login to GitHub and create a new repo.
-2. Go to the root page of your new repo and note the url from the browser.
-3. Execute the following locally.
-4. 
-```bash
-cd <project root folder>
-git init -b main
-git add . && git commit -m "initial commit"
-git remote add origin <your GitHub repo URL from the browser>
-git push -u origin main
-```
-
-
-
-
+![Docker Desktop Tables](media/db_tables.png)
+![Docker Desktop Tables 2](media/db_tables_2.png)
