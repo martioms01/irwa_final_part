@@ -1,4 +1,4 @@
-# Search Engine with Web Analytics - skeleton project
+# Search Engine with Web Analytics
 # IRWA Final Project
 
 This project contains a Flask web app along with the necessary files to run it, as well as the corresponding PostgreSQL database.
