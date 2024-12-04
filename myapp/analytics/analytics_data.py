@@ -4,6 +4,10 @@ import httpagentparser
 from datetime import datetime
 import requests
 
+from myapp.models.session import Session
+from myapp.models.click import Click
+from myapp.models.request import Request
+
 class AnalyticsData:
     """
     An in memory persistence object.
@@ -16,7 +20,7 @@ class AnalyticsData:
         self.http_requests = {}                             # To track HTTP requests data
         self.user_context = {}                              # Specifically stores browser, OS/computer/mobile, time of the day, date, IP address, country, city
         self.queries = {}                                   # To track user queries
-        self.fact_clicks = {}                               # To track document clicks
+        self.fact_clicks = {}                               # To track document clicks {doc_id: ClickedDoc}
         self.total_session_clicks = -1                      # This way we set the value to 0 on startup, and can add later session clicks.
     
     @staticmethod
@@ -25,13 +29,17 @@ class AnalyticsData:
         return datetime.datetime.now().isoformat()    
     
     
-    def log_http_request(self, request):
+    def log_http_request(self, session_id, request):
         """
         Logs an HTTP request with details such as IP, user-agent, method, URL, and referrer.
         
         :param request: The Flask request object.
         :return: None
         """
+
+        new_request = Request(session_id=session_id, url=request.url, referer=request.referrer if request.referrer else "Direct", timestamp=self.get_current_time(), method=request.method)
+        new_request.save()
+
         context_id = random.randint(0, 100000)
         self.http_requests[context_id] = {
             'ip': request.remote_addr,
@@ -43,7 +51,7 @@ class AnalyticsData:
         }  
 
     
-    def track_user_context(self, user_ip, user_agent):
+    def track_user_context(self, session_id, user_ip, user_agent):
         """
         Tracks the user context including browser, OS, device, time of the day, IP address, country, and city.
         
@@ -80,7 +88,10 @@ class AnalyticsData:
                 return "Unknown/Private", "Unknown/Private"
         country, city = get_location(user_ip)
 
-        context_id = random.randint(0, 100000)
+        new_session = Session(session_id=session_id, ip=user_ip, browser=browser, os=os, device=device, time_of_day=time_of_day, timestamp=timestamp, country=country, city=city)
+        new_session.save()
+
+        context_id = session_id
         self.user_context[context_id] = {
             'ip': user_ip,
             'browser': browser,
@@ -99,6 +110,25 @@ class AnalyticsData:
         query_id = random.randint(0, 100000)
         self.queries[query_id] = {'terms': terms, 'timestamp': self.get_current_time()}
         return query_id
+    
+    def log_click(self):
+        self.total_session_clicks += 1
+
+    def log_click_on_document(self, session_id, doc_id, start_time, query):
+        self.log_click()
+        if doc_id in self.fact_clicks:
+            clicked_doc = self.fact_clicks[doc_id]
+            end_time = datetime.now()
+            start_time = datetime.fromisoformat(start_time)
+            dwell_time = (end_time - start_time).total_seconds()
+            clicked_doc.dwell_time = dwell_time
+
+            new_click = Click(session_id=session_id, document_id=doc_id, query=query, dwell_time=dwell_time)
+            new_click.save()
+    
+
+
+
 
 
 class ClickedDoc:

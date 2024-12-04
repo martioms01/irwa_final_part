@@ -10,7 +10,9 @@ from myapp.search.objects import Document, StatsDocument
 from myapp.search.search_engine import SearchEngine
 import myapp.ranking_preparation.preprocessing as pp
 import myapp.ranking_preparation.indexing as ix
+from myapp.init_db import db
 from datetime import datetime
+import random
 
 def _default(self, obj): # for using method to_json in objects
     return getattr(obj.__class__, "to_json", _default.default)(obj)
@@ -20,6 +22,18 @@ JSONEncoder.default = _default
 app = Flask(__name__)                                           # instantiate the Flask application
 app.secret_key = 'afgsreg86sr897b6st8b76va8er76fcs6g8d7'        # random 'secret_key' is used for persisting data in secure cookie
 app.session_cookie_name = 'IRWA_SEARCH_ENGINE'                  # open browser dev tool to see the cookies
+
+app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://postgres:password@localhost:5432/IRWA"
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Initialize the app with SQLAlchemy
+db.init_app(app)
+
+# Create the tables defined in the models/ folder
+with app.app_context():
+    db.create_all()
+
+
 search_engine = SearchEngine()                                  # instantiate our search engine
 analytics_data = AnalyticsData()                                # instantiate our in memory persistence
 
@@ -34,35 +48,24 @@ inverted_index, tf, idf = ix.create_inverted_index_tf_idf(token_tweets)
 # Home URL "/"
 @app.route('/')
 def index():
-    print("starting home url /...")                             
-    
-    session['some_var'] = "IRWA 2021 home"                      # flask server creates a session by persisting a cookie in the user's browser.
-                                                                # the 'session' object keeps data between multiple requests
-
-    user_agent = request.headers.get('User-Agent')
-    agent = httpagentparser.detect(user_agent)    
-    user_ip = request.remote_addr    
-    analytics_data.log_http_request(request)                    # Log HTTP request data
-    analytics_data.track_user_context(user_ip, user_agent)      # Log User Context
-    analytics_data.total_session_clicks +=1                     # Add session clicks
-    
-    if 'doc_id_dwell_time' in session:
-        doc_id, start_time = session['doc_id_dwell_time']
-        if doc_id in analytics_data.fact_clicks:
-            clicked_doc = analytics_data.fact_clicks[doc_id]
-            end_time = datetime.now()
-            start_time = datetime.fromisoformat(start_time)
-            dwell_time = (end_time - start_time).total_seconds()
-            clicked_doc.dwell_time += dwell_time
-            print(f"Document ID={doc_id} dwell time updated: {dwell_time} seconds")
-
-        del session['doc_id_dwell_time']
+    # Set the session id and save it in the db
+    set_session_id(session, request)
+    # Log HTTP request data  
+    analytics_data.log_http_request(session['session_id'], request) 
+    # Log the previous document click
+    save_doc_click(session)
 
     return render_template('index.html', page_title="Welcome")
 
 
 @app.route('/search', methods=['POST'])
 def search_form_post():
+    # Set the session id and save it in the db
+    set_session_id(session, request)
+    # Log HTTP request data  
+    analytics_data.log_http_request(session['session_id'], request) 
+    # Log the previous document click
+    save_doc_click(session)                 
     
     search_query = request.form['search-query']
     search_id = analytics_data.save_query_terms(search_query)
@@ -73,28 +76,17 @@ def search_form_post():
     session['last_found_count'] = found_count
     session['last_search_id'] = search_id 
             
-    if 'doc_id_dwell_time' in session:
-        doc_id, start_time = session['doc_id_dwell_time']
-        if doc_id in analytics_data.fact_clicks:
-            clicked_doc = analytics_data.fact_clicks[doc_id]
-            end_time = datetime.now()
-            start_time = datetime.fromisoformat(start_time)
-            dwell_time = (end_time - start_time).total_seconds()
-            clicked_doc.dwell_time += dwell_time
-            print(f"Document ID={doc_id} dwell time updated: {dwell_time} seconds")
-
-        del session['doc_id_dwell_time']
     
-    analytics_data.log_http_request(request)                    # Log HTTP request data
-    analytics_data.total_session_clicks +=1                     # Add session clicks
     
     return render_template('results.html', results_list=results, page_title="Results", found_counter=found_count)
 
 
 @app.route('/doc_details', methods=['GET'])
 def doc_details():
-
-    res = session["some_var"]
+    # Set the session id and save it in the db
+    set_session_id(session, request)
+    # Log HTTP request data  
+    analytics_data.log_http_request(session['session_id'], request) 
     
     clicked_doc_id = request.args["id"]                         # get the query string parameters from request
     search_query = session['last_search_query']
@@ -115,8 +107,7 @@ def doc_details():
     session['doc_id_dwell_time'] = (clicked_doc_id, datetime.now().isoformat())                                        # Save the current document ID in the session
 
     analytics_data.fact_clicks[clicked_doc_id] = clicked_doc
-    analytics_data.log_http_request(request)                                       # Log HTTP request data
-    analytics_data.total_session_clicks +=1                                        # Add session clicks
+
     
     print(clicked_doc)
     
@@ -129,7 +120,13 @@ def stats():
     Show simple statistics example. ### Replace with dashboard ###
     :return:
     """
-    
+    # Set the session id and save it in the db
+    set_session_id(session, request)
+    # Log HTTP request data  
+    analytics_data.log_http_request(session['session_id'], request) 
+    # Log the previous document click
+    save_doc_click(session) 
+
     print(analytics_data.total_session_clicks)
 
     docs = []
@@ -144,20 +141,6 @@ def stats():
     # simulate sort by ranking
     docs.sort(key=lambda doc: doc.count, reverse=True)
     
-    analytics_data.log_http_request(request)                    # Log HTTP request data
-    analytics_data.total_session_clicks +=1                     # Add session clicks
-    
-    if 'doc_id_dwell_time' in session:
-        doc_id, start_time = session['doc_id_dwell_time']
-        if doc_id in analytics_data.fact_clicks:
-            clicked_doc = analytics_data.fact_clicks[doc_id]
-            end_time = datetime.now()
-            start_time = datetime.fromisoformat(start_time)
-            dwell_time = (end_time - start_time).total_seconds()
-            clicked_doc.dwell_time += dwell_time
-            print(f"Document ID={doc_id} dwell time updated: {dwell_time} seconds")
-
-        del session['doc_id_dwell_time']
 
     return render_template('stats.html', clicks_data=docs)
     # ### End replace with your code ###
@@ -165,6 +148,13 @@ def stats():
 
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
+    # Set the session id and save it in the db
+    set_session_id(session, request)
+    # Log HTTP request data  
+    analytics_data.log_http_request(session['session_id'], request) 
+    # Log the previous document click
+    save_doc_click(session)
+
     print("Keys in fact_clicks:", analytics_data.fact_clicks.keys())  # Debugging output
 
     visited_docs = []
@@ -181,27 +171,19 @@ def dashboard():
     visited_docs.sort(key=lambda doc: doc.count, reverse=True)
 
     visited_docs = [doc.__str__() for doc in visited_docs]
-    
-    analytics_data.log_http_request(request)                    # Log HTTP request data
-    analytics_data.total_session_clicks +=1                     # Add session clicks
-    
-    if 'doc_id_dwell_time' in session:
-        doc_id, start_time = session['doc_id_dwell_time']
-        if doc_id in analytics_data.fact_clicks:
-            clicked_doc = analytics_data.fact_clicks[doc_id]
-            end_time = datetime.now()
-            start_time = datetime.fromisoformat(start_time)
-            dwell_time = (end_time - start_time).total_seconds()
-            clicked_doc.dwell_time += dwell_time
-            print(f"Document ID={doc_id} dwell time updated: {dwell_time} seconds")
-
-        del session['doc_id_dwell_time']
 
     return render_template('dashboard.html', visited_docs=visited_docs)
 
 
 @app.route('/sentiment/<doc_id>', methods=['GET', 'POST'])
 def sentiment_analysis(doc_id):
+    # Set the session id and save it in the db
+    set_session_id(session, request)
+    # Log HTTP request data  
+    analytics_data.log_http_request(session['session_id'], request) 
+    # Log the previous document click
+    save_doc_click(session)
+
     document = corpus[(int(doc_id))]
     if not document:
         return "Document not found", 404
@@ -215,24 +197,22 @@ def sentiment_analysis(doc_id):
         score = sid.polarity_scores(str(text))['compound']
         return render_template('sentiment.html', score=score, document=document)
     
-    # For `GET`, render the page with only the document details
-    
-    analytics_data.log_http_request(request)                    # Log HTTP request data
-    analytics_data.total_session_clicks +=1                     # Add session clicks
-    
+
+
+
+def set_session_id(session, request):
+    if 'session_id' not in session:
+        session['session_id'] = random.randint(100, 999)
+        user_ip = request.remote_addr    
+        user_agent = request.headers.get('User-Agent')
+        agent = httpagentparser.detect(user_agent)   
+        analytics_data.track_user_context(session['session_id'], user_ip, user_agent) # Log User Context  
+
+def save_doc_click(session):
     if 'doc_id_dwell_time' in session:
         doc_id, start_time = session['doc_id_dwell_time']
-        if doc_id in analytics_data.fact_clicks:
-            clicked_doc = analytics_data.fact_clicks[doc_id]
-            end_time = datetime.now()
-            start_time = datetime.fromisoformat(start_time)
-            dwell_time = (end_time - start_time).total_seconds()
-            clicked_doc.dwell_time += dwell_time
-            print(f"Document ID={doc_id} dwell time updated: {dwell_time} seconds")
-
+        analytics_data.log_click_on_document(session['session_id'], doc_id, start_time, session['last_search_query'])
         del session['doc_id_dwell_time']
-
-    return render_template('sentiment.html', document=document)
 
 if __name__ == "__main__":
     app.run(port=8088, host="0.0.0.0", threaded=False, debug=True)
