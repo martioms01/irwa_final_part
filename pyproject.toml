@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "irwa-final-part"
+version = "0.1.0"
+description = ""
+authors = ["iv97n <ivan.heg.03@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+httpagentparser = "^1.9.5"
+nltk = "^3.9.1"
+flask = "^3.1.0"
+pandas = "^2.2.3"
+faker = "^33.1.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

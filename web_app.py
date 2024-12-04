@@ -54,7 +54,7 @@ token_tweets = pp.create_tokenized_dictionary(corpus)
 inverted_index, tf, idf = ix.create_inverted_index_tf_idf(token_tweets)
 #print("Loaded corpus keys:", corpus.keys())  # Check the keys
 print("Type of first element in corpus:", type(list(corpus.values())[0]))
-print("loaded corpus. first elem:", list(corpus.values())[0])
+print("loaded corpus. first elem:", list(corpus.values())[0]) # REVIEW, ERROR WHEN LOADING
 
 # Home URL "/"
 @app.route('/')
