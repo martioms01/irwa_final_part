@@ -188,8 +188,6 @@ def dashboard():
                            preferred_queries=preferred_queries.to_dict(orient='records'),
                            term_counts=term_counts)
 
-    return render_template('dashboard.html', visited_docs=visited_docs)
-
 
 @app.route('/sentiment/<doc_id>', methods=['GET', 'POST'])
 def sentiment_analysis(doc_id):
